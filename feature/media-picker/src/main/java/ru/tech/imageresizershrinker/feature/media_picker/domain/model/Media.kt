@@ -17,81 +17,90 @@
 
 package ru.tech.imageresizershrinker.feature.media_picker.domain.model
 
+import android.net.Uri
 
-data class Media(
-    val id: Long = 0,
-    val label: String,
-    val uri: String,
-    val path: String,
-    val relativePath: String,
-    val albumID: Long,
-    val albumLabel: String,
-    val timestamp: Long,
-    val expiryTimestamp: Long? = null,
-    val takenTimestamp: Long? = null,
-    val fullDate: String,
-    val mimeType: String,
-    val favorite: Int,
-    val trashed: Int,
-    val duration: String? = null,
-) {
+sealed class Media {
+    data class Image(
+        val id: Long = 0,
+        val label: String,
+        val uri: String,
+        val path: String,
+        val relativePath: String,
+        val albumID: Long,
+        val albumLabel: String,
+        val timestamp: Long,
+        val expiryTimestamp: Long? = null,
+        val takenTimestamp: Long? = null,
+        val fullDate: String,
+        val mimeType: String,
+        val favorite: Int,
+        val trashed: Int,
+        val duration: String? = null,
+    ) : Media() {
 
-    val isVideo: Boolean = mimeType.startsWith("video/") && duration != null
+        val isImage: Boolean = mimeType.startsWith("image/")
 
-    val isImage: Boolean = mimeType.startsWith("image/")
+        val isTrashed: Boolean = trashed == 1
 
-    val isTrashed: Boolean = trashed == 1
+        val isFavorite: Boolean = favorite == 1
 
-    val isFavorite: Boolean = favorite == 1
+        /**
+         * Used to determine if the Media object is not accessible
+         * via MediaStore.
+         * This happens when the user tries to open media from an app
+         * using external sources (in our case, Gallery Media Viewer), but
+         * the specific media is only available internally in that app
+         * (Android/data(OR media)/com.package.name/)
+         *
+         * If it's readUriOnly then we know that we should expect a barebone
+         * Media object with limited functionality (no favorites, trash, timestamp etc)
+         */
+        val readUriOnly: Boolean = albumID == -99L && albumLabel == ""
 
-    /**
-     * Used to determine if the Media object is not accessible
-     * via MediaStore.
-     * This happens when the user tries to open media from an app
-     * using external sources (in our case, Gallery Media Viewer), but
-     * the specific media is only available internally in that app
-     * (Android/data(OR media)/com.package.name/)
-     *
-     * If it's readUriOnly then we know that we should expect a barebone
-     * Media object with limited functionality (no favorites, trash, timestamp etc)
-     */
-    val readUriOnly: Boolean = albumID == -99L && albumLabel == ""
+        /**
+         * Determine if the current media is a raw format
+         *
+         * Checks if [mimeType] starts with "image/x-" or "image/vnd."
+         *
+         * Most used formats:
+         * - ARW: image/x-sony-arw
+         * - CR2: image/x-canon-cr2
+         * - CRW: image/x-canon-crw
+         * - DCR: image/x-kodak-dcr
+         * - DNG: image/x-adobe-dng
+         * - ERF: image/x-epson-erf
+         * - K25: image/x-kodak-k25
+         * - KDC: image/x-kodak-kdc
+         * - MRW: image/x-minolta-mrw
+         * - NEF: image/x-nikon-nef
+         * - ORF: image/x-olympus-orf
+         * - PEF: image/x-pentax-pef
+         * - RAF: image/x-fuji-raf
+         * - RAW: image/x-panasonic-raw
+         * - SR2: image/x-sony-sr2
+         * - SRF: image/x-sony-srf
+         * - X3F: image/x-sigma-x3f
+         *
+         * Other proprietary image types in the standard:
+         * image/vnd.manufacturer.filename_extension for instance for NEF by Nikon and .mrv for Minolta:
+         * - NEF: image/vnd.nikon.nef
+         * - Minolta: image/vnd.minolta.mrw
+         */
+        val isRaw: Boolean =
+            mimeType.isNotBlank() && (mimeType.startsWith("image/x-") || mimeType.startsWith("image/vnd."))
 
-    /**
-     * Determine if the current media is a raw format
-     *
-     * Checks if [mimeType] starts with "image/x-" or "image/vnd."
-     *
-     * Most used formats:
-     * - ARW: image/x-sony-arw
-     * - CR2: image/x-canon-cr2
-     * - CRW: image/x-canon-crw
-     * - DCR: image/x-kodak-dcr
-     * - DNG: image/x-adobe-dng
-     * - ERF: image/x-epson-erf
-     * - K25: image/x-kodak-k25
-     * - KDC: image/x-kodak-kdc
-     * - MRW: image/x-minolta-mrw
-     * - NEF: image/x-nikon-nef
-     * - ORF: image/x-olympus-orf
-     * - PEF: image/x-pentax-pef
-     * - RAF: image/x-fuji-raf
-     * - RAW: image/x-panasonic-raw
-     * - SR2: image/x-sony-sr2
-     * - SRF: image/x-sony-srf
-     * - X3F: image/x-sigma-x3f
-     *
-     * Other proprietary image types in the standard:
-     * image/vnd.manufacturer.filename_extension for instance for NEF by Nikon and .mrv for Minolta:
-     * - NEF: image/vnd.nikon.nef
-     * - Minolta: image/vnd.minolta.mrw
-     */
-    val isRaw: Boolean =
-        mimeType.isNotBlank() && (mimeType.startsWith("image/x-") || mimeType.startsWith("image/vnd."))
+        val fileExtension: String = label.substringAfterLast(".").removePrefix(".")
 
-    val fileExtension: String = label.substringAfterLast(".").removePrefix(".")
+        val volume: String = path.substringBeforeLast("/").removeSuffix(relativePath.removeSuffix("/"))
+    }
 
-    val volume: String = path.substringBeforeLast("/").removeSuffix(relativePath.removeSuffix("/"))
+    data class Video(
+        val uri: Uri,
+        val name: String,
+        val size: Long,
+        val duration: Long,
+        val mimeType: String
+    ) : Media()
 }
 
 const val WEEKLY_DATE_FORMAT = "EEEE"

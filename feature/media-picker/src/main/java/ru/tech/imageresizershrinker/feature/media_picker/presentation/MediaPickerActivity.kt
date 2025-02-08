@@ -134,4 +134,68 @@ class MediaPickerActivity : M3Activity() {
         get() = if (pickImage) AllowedMedia.Photos(this?.takeLastWhile { it != '/' })
         else if (pickVideo) AllowedMedia.Videos
         else AllowedMedia.Both
+
+    private fun getMediaFromUri(uri: Uri): Media? {
+        return contentResolver.getType(uri)?.let { mimeType ->
+            when {
+                mimeType.startsWith("image/") -> {
+                    // existing image handling code...
+                }
+                mimeType.startsWith("video/") -> {
+                    contentResolver.query(
+                        uri,
+                        arrayOf(
+                            MediaStore.Video.Media.DISPLAY_NAME,
+                            MediaStore.Video.Media.SIZE,
+                            MediaStore.Video.Media.DURATION
+                        ),
+                        null,
+                        null,
+                        null
+                    )?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            Media.Video(
+                                uri = uri,
+                                name = cursor.getString(0),
+                                size = cursor.getLong(1),
+                                duration = cursor.getLong(2),
+                                mimeType = mimeType
+                            )
+                        } else null
+                    }
+                }
+                else -> null
+            }
+        }
+    }
+
+    private val supportedVideoFormats = arrayOf(
+        "video/mp4",
+        "video/quicktime",
+        "video/x-matroska",
+        "video/webm"
+    )
+
+    private fun handlePickerResult(uris: List<Uri>) {
+        val media = uris.mapNotNull { uri -> getMediaFromUri(uri) }
+        when {
+            media.all { it is Media.Image } -> {
+                // existing image handling...
+            }
+            media.all { it is Media.Video } -> {
+                setResult(
+                    Activity.RESULT_OK,
+                    Intent().apply {
+                        putExtra(PICKED_MEDIA, ArrayList(media))
+                        putExtra(MEDIA_TYPE, "video")
+                        putExtra(MIME_TYPES, supportedVideoFormats)
+                    }
+                )
+            }
+            else -> {
+                // Handle mixed media types or show error
+            }
+        }
+        finish()
+    }
 }

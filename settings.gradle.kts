@@ -17,6 +17,11 @@
 
 @file:Suppress("UnstableApiUsage")
 
+plugins {
+    id("image.toolbox.feature")
+    id("image.toolbox.compose")
+}
+
 pluginManagement {
     repositories {
         includeBuild("build-logic")
@@ -108,6 +113,7 @@ include(":feature:base64-tools")
 include(":feature:checksum-tools")
 include(":feature:mesh-gradients")
 include(":feature:edit-exif")
+include(":feature:video-converter")
 
 include(":feature:root")
 
